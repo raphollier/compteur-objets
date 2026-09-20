@@ -131,3 +131,10 @@ def test_meme_resultat_que_scipy_sur_des_images_aleatoires():
         _, nb_reference = ndimage.label(masque, structure=np.ones((3, 3)))
         assert resultat["nb_objets"] == nb_reference, f"graine {graine}"
         assert resultat["aire_totale"] == masque.sum(), f"graine {graine}"
+
+
+def test_image_en_couleur_est_refusee():
+    image = np.zeros((10, 10, 3), dtype=np.uint8)   # 3 canaux : une image couleur
+
+    with pytest.raises(ValueError):
+        analyser(image, seuil=128)
