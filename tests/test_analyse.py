@@ -77,7 +77,7 @@ def test_une_forme_en_u_est_un_seul_objet():
 
 
 def test_deux_objets_colles_aux_bords_haut_et_bas_restent_distincts():
-    image = image_blanche()
+    image = image_blanche(hauteur=10, largeur=10)
     image[0:2, 3:6] = 0      # lignes 0-1 : touche le bord du haut
     image[8:10, 3:6] = 0     # lignes 8-9 : touche le bord du bas, mêmes colonnes
 
