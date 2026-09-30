@@ -30,13 +30,8 @@ def analyser(image_grise: np.ndarray, seuil: int, objets_clairs: bool = False) -
             f"image en niveaux de gris attendue (2 dimensions), "
             f"reçu {image_grise.ndim} dimensions"
         )
-    if not 0 <= seuil <= 255:
-        raise ValueError(f"le seuil doit être entre 0 et 255, reçu : {seuil}")
 
-    if objets_clairs:
-        masque = image_grise > seuil
-    else:
-        masque = image_grise < seuil
+    masque = calculer_masque(image_grise, seuil, objets_clairs)
 
     aires = _mesurer_objets(masque)
 
@@ -50,6 +45,18 @@ def analyser(image_grise: np.ndarray, seuil: int, objets_clairs: bool = False) -
         "aire_moyenne": aire_moyenne,
     }
 
+
+def calculer_masque(image_grise: np.ndarray, seuil: int, objets_clairs: bool = False) -> np.ndarray:
+    """Renvoie le masque binaire : True là où le pixel est « objet ».
+
+    Lève ValueError si le seuil n'est pas entre 0 et 255.
+    """
+    if not 0 <= seuil <= 255:
+        raise ValueError(f"le seuil doit être entre 0 et 255, reçu : {seuil}")
+
+    if objets_clairs:
+        return image_grise > seuil
+    return image_grise < seuil
     
 
 

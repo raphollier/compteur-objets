@@ -28,3 +28,11 @@ def preparer_image(contenu: bytes) -> np.ndarray:
     image = image.convert("L")
     image.thumbnail((TAILLE_MAX, TAILLE_MAX))
     return np.array(image)
+
+
+def masque_en_png(masque: np.ndarray) -> bytes:
+    """Encode un masque binaire en image PNG : objets en blanc, fond en noir."""
+    image = Image.fromarray((masque * 255).astype(np.uint8))
+    tampon = io.BytesIO()
+    image.save(tampon, format="PNG")
+    return tampon.getvalue()

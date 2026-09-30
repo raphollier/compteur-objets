@@ -4,11 +4,12 @@ import itertools
 import threading
 from datetime import datetime, timezone                      # NOUVEAU
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Query, Response, UploadFile
+
 from pydantic import BaseModel, Field                        # NOUVEAU : Field
 
-from app.analyse import analyser                             # NOUVEAU
-from app.images import preparer_image
+from app.analyse import analyser, calculer_masque
+from app.images import masque_en_png, preparer_image
 
 TAILLE_FICHIER_MAX = 10 * 1024 * 1024  # 10 Mo
 
@@ -96,3 +97,40 @@ def lancer_analyse(image_id: int, demande: DemandeAnalyse) -> Analyse:
     )
     analyses[analyse_id] = analyse
     return analyse
+
+@app.get("/images/{image_id}/analyses")
+def historique_image(image_id: int) -> list[Analyse]:
+    """Toutes les analyses d'une image, de la plus ancienne à la plus récente."""
+    if image_id not in images:
+        raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
+
+    return [analyse for analyse in analyses.values() if analyse.image_id == image_id]
+
+
+@app.get("/analyses")
+def liste_analyses(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+) -> list[Analyse]:
+    """Toutes les analyses, de la plus récente à la plus ancienne, par pages."""
+    plus_recentes_d_abord = sorted(analyses.values(), key=lambda a: a.id, reverse=True)
+    return plus_recentes_d_abord[offset : offset + limit]
+
+
+@app.get(
+    "/images/{image_id}/masque",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}}},
+)
+def voir_masque(
+    image_id: int,
+    seuil: int = Query(ge=0, le=255),
+    objets_clairs: bool = False,
+) -> Response:
+    """Montre l'image binarisée : en blanc, ce qui sera compté comme objet."""
+    image = images.get(image_id)
+    if image is None:
+        raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
+
+    masque = calculer_masque(image["tableau"], seuil, objets_clairs)
+    return Response(content=masque_en_png(masque), media_type="image/png")
