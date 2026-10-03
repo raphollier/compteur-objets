@@ -1,23 +1,12 @@
 import io
-import itertools
 
 import pytest
 from fastapi.testclient import TestClient
 from PIL import Image, ImageDraw
 
-from app import main
 from app.main import app
 
 client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def stockage_vide():
-    """Repart d'un serveur vide avant chaque test."""
-    main.images.clear()
-    main.analyses.clear()
-    main._numeros_images = itertools.count(start=1)
-    main._numeros_analyses = itertools.count(start=1)
 
 
 def png_trois_carres() -> bytes:
