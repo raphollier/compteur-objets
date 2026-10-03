@@ -30,9 +30,18 @@ def preparer_image(contenu: bytes) -> np.ndarray:
     return np.array(image)
 
 
+def tableau_en_png(tableau: np.ndarray) -> bytes:
+    """Encode un tableau de gris (uint8) en image PNG."""
+    tampon = io.BytesIO()
+    Image.fromarray(tableau).save(tampon, format="PNG")
+    return tampon.getvalue()
+
+
 def masque_en_png(masque: np.ndarray) -> bytes:
     """Encode un masque binaire en image PNG : objets en blanc, fond en noir."""
-    image = Image.fromarray((masque * 255).astype(np.uint8))
-    tampon = io.BytesIO()
-    image.save(tampon, format="PNG")
-    return tampon.getvalue()
+    return tableau_en_png((masque * 255).astype(np.uint8))
+
+
+def charger_image(chemin: str) -> np.ndarray:
+    """Relit une image préparée depuis le disque, en tableau de gris."""
+    return np.array(Image.open(chemin))

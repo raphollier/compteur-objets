@@ -1,27 +1,22 @@
 """Le service web : les routes HTTP du compteur d'objets."""
 
-import itertools
-import threading
-from datetime import datetime, timezone                      # NOUVEAU
+import os
+from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Response, UploadFile
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel, Field                        # NOUVEAU : Field
-
+from app import base
 from app.analyse import analyser, calculer_masque
-from app.images import masque_en_png, preparer_image
+from app.images import charger_image, masque_en_png, preparer_image, tableau_en_png
 
 TAILLE_FICHIER_MAX = 10 * 1024 * 1024  # 10 Mo
+DOSSIER_IMAGES = Path(os.environ.get("DOSSIER_IMAGES", "donnees/images"))
+DOSSIER_IMAGES.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Compteur d'objets")
-
-# Stockage PROVISOIRE, en mémoire : tout disparaît quand le serveur s'arrête.
-# Il sera remplacé par PostgreSQL à l'étape 3.
-images = {}
-analyses = {}                                                # NOUVEAU
-_numeros_images = itertools.count(start=1)                   # renommé
-_numeros_analyses = itertools.count(start=1)                 # NOUVEAU
-_verrou = threading.Lock()
 
 
 class ImageEnvoyee(BaseModel):
@@ -31,12 +26,12 @@ class ImageEnvoyee(BaseModel):
     hauteur: int
 
 
-class DemandeAnalyse(BaseModel):                             # NOUVEAU
+class DemandeAnalyse(BaseModel):
     seuil: int = Field(ge=0, le=255)
     objets_clairs: bool = False
 
 
-class Analyse(BaseModel):                                    # NOUVEAU
+class Analyse(BaseModel):
     id: int
     image_id: int
     seuil: int
@@ -55,7 +50,7 @@ def sante():
 
 @app.post("/images", status_code=201)
 def envoyer_image(fichier: UploadFile) -> ImageEnvoyee:
-    """Reçoit une photo, la prépare, et lui attribue un numéro."""
+    """Reçoit une photo, la prépare, l'enregistre sur disque et en base."""
     contenu = fichier.file.read(TAILLE_FICHIER_MAX + 1)
     if len(contenu) > TAILLE_FICHIER_MAX:
         raise HTTPException(status_code=413, detail="fichier trop volumineux (10 Mo maximum)")
@@ -65,46 +60,45 @@ def envoyer_image(fichier: UploadFile) -> ImageEnvoyee:
     except ValueError as erreur:
         raise HTTPException(status_code=415, detail=str(erreur))
 
-    with _verrou:
-        image_id = next(_numeros_images)
-
-    nom_origine = fichier.filename or "sans_nom"
-    images[image_id] = {"nom_origine": nom_origine, "tableau": tableau}
+    chemin = DOSSIER_IMAGES / f"{uuid4().hex}.png"
+    chemin.write_bytes(tableau_en_png(tableau))
 
     hauteur, largeur = tableau.shape
-    return ImageEnvoyee(id=image_id, nom_origine=nom_origine, largeur=largeur, hauteur=hauteur)
+    ligne = base.creer_image(
+        nom_origine=fichier.filename or "sans_nom",
+        chemin_fichier=str(chemin),
+        largeur=largeur,
+        hauteur=hauteur,
+    )
+    return ImageEnvoyee(**ligne)
 
 
-@app.post("/images/{image_id}/analyses", status_code=201)    # NOUVEAU
+@app.post("/images/{image_id}/analyses", status_code=201)
 def lancer_analyse(image_id: int, demande: DemandeAnalyse) -> Analyse:
     """Compte les objets d'une image déjà envoyée, avec le seuil demandé."""
-    image = images.get(image_id)
+    image = base.lire_image(image_id)
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    resultat = analyser(image["tableau"], demande.seuil, demande.objets_clairs)
+    tableau = charger_image(image["chemin_fichier"])
+    resultat = analyser(tableau, demande.seuil, demande.objets_clairs)
 
-    with _verrou:
-        analyse_id = next(_numeros_analyses)
-
-    analyse = Analyse(
-        id=analyse_id,
+    ligne = base.creer_analyse(
         image_id=image_id,
         seuil=demande.seuil,
         objets_clairs=demande.objets_clairs,
-        date=datetime.now(timezone.utc),
         **resultat,
     )
-    analyses[analyse_id] = analyse
-    return analyse
+    return Analyse(**ligne)
+
 
 @app.get("/images/{image_id}/analyses")
 def historique_image(image_id: int) -> list[Analyse]:
     """Toutes les analyses d'une image, de la plus ancienne à la plus récente."""
-    if image_id not in images:
+    if base.lire_image(image_id) is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    return [analyse for analyse in analyses.values() if analyse.image_id == image_id]
+    return [Analyse(**ligne) for ligne in base.analyses_de_image(image_id)]
 
 
 @app.get("/analyses")
@@ -113,8 +107,7 @@ def liste_analyses(
     offset: int = Query(default=0, ge=0),
 ) -> list[Analyse]:
     """Toutes les analyses, de la plus récente à la plus ancienne, par pages."""
-    plus_recentes_d_abord = sorted(analyses.values(), key=lambda a: a.id, reverse=True)
-    return plus_recentes_d_abord[offset : offset + limit]
+    return [Analyse(**ligne) for ligne in base.liste_analyses(limit, offset)]
 
 
 @app.get(
@@ -128,9 +121,10 @@ def voir_masque(
     objets_clairs: bool = False,
 ) -> Response:
     """Montre l'image binarisée : en blanc, ce qui sera compté comme objet."""
-    image = images.get(image_id)
+    image = base.lire_image(image_id)
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    masque = calculer_masque(image["tableau"], seuil, objets_clairs)
+    tableau = charger_image(image["chemin_fichier"])
+    masque = calculer_masque(tableau, seuil, objets_clairs)
     return Response(content=masque_en_png(masque), media_type="image/png")
