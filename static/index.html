@@ -11,7 +11,31 @@
   <button id="envoyer">Envoyer</button>
 
   <p id="message"></p>
-  <img id="apercu" alt="" style="max-width: 500px;">
+
+    <div id="reglages">
+    <label>
+      Seuil : <span id="valeurSeuil">128</span>
+      <input type="range" id="seuil" min="0" max="255" value="128">
+    </label>
+    <label>
+      <input type="checkbox" id="objetsClairs"> objets clairs sur fond sombre
+    </label>
+    <button id="analyser">Analyser</button>
+  </div>
+
+  <p id="resultat"></p>
+
+
+  <div id="images">
+    <figure>
+      <figcaption>Image envoyée</figcaption>
+      <img id="apercu" alt="" style="max-width: 400px;">
+    </figure>
+    <figure>
+      <figcaption>Ce qui sera compté (en blanc)</figcaption>
+      <img id="masque" alt="" style="max-width: 400px;">
+    </figure>
+  </div>
 
   <script>
     const champFichier = document.getElementById("fichier");
@@ -41,6 +65,56 @@
       imageId = image.id;
       message.textContent = `Image n° ${image.id} — ${image.largeur} x ${image.hauteur} px`;
       apercu.src = `/images/${image.id}/fichier`;
+      rafraichirMasque();
+    });
+
+        const curseur = document.getElementById("seuil");
+    const valeurSeuil = document.getElementById("valeurSeuil");
+    const caseObjetsClairs = document.getElementById("objetsClairs");
+    const masque = document.getElementById("masque");
+    const resultat = document.getElementById("resultat");
+    let minuteur = null;
+
+    function rafraichirMasque() {
+      if (imageId === null) return;
+      masque.src = `/images/${imageId}/masque?seuil=${curseur.value}`
+                 + `&objets_clairs=${caseObjetsClairs.checked}`;
+    }
+
+    curseur.addEventListener("input", () => {
+      valeurSeuil.textContent = curseur.value;
+      clearTimeout(minuteur);
+      minuteur = setTimeout(rafraichirMasque, 150);
+    });
+
+    caseObjetsClairs.addEventListener("change", rafraichirMasque);
+
+    document.getElementById("analyser").addEventListener("click", async () => {
+      if (imageId === null) {
+        resultat.textContent = "Envoie d'abord une photo.";
+        return;
+      }
+
+      resultat.textContent = "Analyse en cours...";
+      const reponse = await fetch(`/images/${imageId}/analyses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          seuil: Number(curseur.value),
+          objets_clairs: caseObjetsClairs.checked,
+        }),
+      });
+
+      if (!reponse.ok) {
+        const erreur = await reponse.json();
+        resultat.textContent = "Erreur " + reponse.status + " : " + JSON.stringify(erreur.detail);
+        return;
+      }
+
+      const analyse = await reponse.json();
+      resultat.textContent =
+        `${analyse.nb_objets} objets — aire totale ${analyse.aire_totale} px — `
+        + `aire moyenne ${analyse.aire_moyenne.toFixed(1)} px`;
     });
   </script>
 </body>
