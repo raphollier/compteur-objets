@@ -6,6 +6,8 @@ from pathlib import Path
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Response, UploadFile
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app import base
@@ -17,6 +19,7 @@ DOSSIER_IMAGES = Path(os.environ.get("DOSSIER_IMAGES", "donnees/images"))
 DOSSIER_IMAGES.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(title="Compteur d'objets")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 class ImageEnvoyee(BaseModel):
@@ -40,6 +43,13 @@ class Analyse(BaseModel):
     aire_totale: int
     aire_moyenne: float
     date: datetime
+
+
+@app.get("/", include_in_schema=False)
+def page_accueil() -> FileResponse:
+    """Sert la page web du service."""
+    return FileResponse("static/index.html")
+
 
 
 @app.get("/sante")
@@ -128,3 +138,17 @@ def voir_masque(
     tableau = charger_image(image["chemin_fichier"])
     masque = calculer_masque(tableau, seuil, objets_clairs)
     return Response(content=masque_en_png(masque), media_type="image/png")
+
+
+@app.get(
+    "/images/{image_id}/fichier",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}}},
+)
+def voir_image(image_id: int) -> FileResponse:
+    """Renvoie l'image préparée (niveaux de gris, réduite)."""
+    image = base.lire_image(image_id)
+    if image is None:
+        raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
+
+    return FileResponse(image["chemin_fichier"], media_type="image/png")

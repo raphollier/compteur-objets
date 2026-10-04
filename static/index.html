@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Compteur d'objets</title>
+</head>
+<body>
+  <h1>Compteur d'objets</h1>
+
+  <input type="file" id="fichier" accept="image/*">
+  <button id="envoyer">Envoyer</button>
+
+  <p id="message"></p>
+  <img id="apercu" alt="" style="max-width: 500px;">
+
+  <script>
+    const champFichier = document.getElementById("fichier");
+    const message = document.getElementById("message");
+    const apercu = document.getElementById("apercu");
+    let imageId = null;
+
+    document.getElementById("envoyer").addEventListener("click", async () => {
+      const fichier = champFichier.files[0];
+      if (!fichier) {
+        message.textContent = "Choisis une photo.";
+        return;
+      }
+
+      const donnees = new FormData();
+      donnees.append("fichier", fichier);
+      message.textContent = "Envoi...";
+
+      const reponse = await fetch("/images", { method: "POST", body: donnees });
+      if (!reponse.ok) {
+        const erreur = await reponse.json();
+        message.textContent = "Erreur " + reponse.status + " : " + erreur.detail;
+        return;
+      }
+
+      const image = await reponse.json();
+      imageId = image.id;
+      message.textContent = `Image n° ${image.id} — ${image.largeur} x ${image.hauteur} px`;
+      apercu.src = `/images/${image.id}/fichier`;
+    });
+  </script>
+</body>
+</html>
