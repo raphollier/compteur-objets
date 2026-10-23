@@ -3,6 +3,26 @@
 <head>
   <meta charset="utf-8">
   <title>Compteur d'objets</title>
+  
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      color: #222;
+    }
+    h1 { font-size: 1.5rem; }
+    #reglages { margin: 1rem 0; display: flex; gap: 1.5rem; align-items: center; }
+    #images { display: flex; gap: 1rem; flex-wrap: wrap; }
+    figure { margin: 0; }
+    figcaption { font-size: 0.85rem; color: #666; }
+    img { max-width: 400px; border: 1px solid #ccc; }
+    table { border-collapse: collapse; width: 100%; margin-top: 0.5rem; }
+    th, td { border: 1px solid #ddd; padding: 0.3rem 0.6rem; text-align: right; }
+    th { background: #f4f4f4; }
+    #message, #resultat { font-weight: bold; }
+  </style>
 </head>
 <body>
   <h1>Compteur d'objets</h1>
@@ -12,7 +32,7 @@
 
   <p id="message"></p>
 
-    <div id="reglages">
+  <div id="reglages">
     <label>
       Seuil : <span id="valeurSeuil">128</span>
       <input type="range" id="seuil" min="0" max="255" value="128">
@@ -25,24 +45,80 @@
 
   <p id="resultat"></p>
 
-
   <div id="images">
     <figure>
       <figcaption>Image envoyée</figcaption>
-      <img id="apercu" alt="" style="max-width: 400px;">
+      <img id="apercu" alt="">
     </figure>
     <figure>
       <figcaption>Ce qui sera compté (en blanc)</figcaption>
-      <img id="masque" alt="" style="max-width: 400px;">
+      <img id="masque" alt="">
     </figure>
   </div>
 
+  <h2>Historique de cette image</h2>
+  <table id="historique">
+    <thead>
+      <tr>
+        <th>#</th><th>Seuil</th><th>Objets clairs</th>
+        <th>Objets</th><th>Aire totale</th><th>Aire moyenne</th><th>Date</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
   <script>
+    // ---------- Les éléments de la page ----------
     const champFichier = document.getElementById("fichier");
     const message = document.getElementById("message");
     const apercu = document.getElementById("apercu");
-    let imageId = null;
+    const curseur = document.getElementById("seuil");
+    const valeurSeuil = document.getElementById("valeurSeuil");
+    const caseObjetsClairs = document.getElementById("objetsClairs");
+    const masque = document.getElementById("masque");
+    const resultat = document.getElementById("resultat");
+    const corpsHistorique = document.querySelector("#historique tbody");
 
+    let imageId = null;
+    let minuteur = null;
+
+    // ---------- Les fonctions ----------
+    function rafraichirMasque() {
+      if (imageId === null) return;
+      masque.src = `/images/${imageId}/masque?seuil=${curseur.value}`
+                 + `&objets_clairs=${caseObjetsClairs.checked}`;
+    }
+
+    async function chargerHistorique() {
+      if (imageId === null) return;
+
+      const reponse = await fetch(`/images/${imageId}/analyses`);
+      if (!reponse.ok) return;
+
+      const analyses = await reponse.json();
+      corpsHistorique.replaceChildren();
+
+      for (const analyse of analyses.slice().reverse()) {
+        const ligne = document.createElement("tr");
+        const valeurs = [
+          analyse.id,
+          analyse.seuil,
+          analyse.objets_clairs ? "oui" : "non",
+          analyse.nb_objets,
+          analyse.aire_totale,
+          analyse.aire_moyenne.toFixed(1),
+          new Date(analyse.date).toLocaleString("fr-FR"),
+        ];
+        for (const valeur of valeurs) {
+          const cellule = document.createElement("td");
+          cellule.textContent = valeur;
+          ligne.appendChild(cellule);
+        }
+        corpsHistorique.appendChild(ligne);
+      }
+    }
+
+    // ---------- Envoyer une photo ----------
     document.getElementById("envoyer").addEventListener("click", async () => {
       const fichier = champFichier.files[0];
       if (!fichier) {
@@ -65,22 +141,12 @@
       imageId = image.id;
       message.textContent = `Image n° ${image.id} — ${image.largeur} x ${image.hauteur} px`;
       apercu.src = `/images/${image.id}/fichier`;
+      resultat.textContent = "";
       rafraichirMasque();
+      chargerHistorique();                       // ← ICI : vide le tableau pour la nouvelle image
     });
 
-        const curseur = document.getElementById("seuil");
-    const valeurSeuil = document.getElementById("valeurSeuil");
-    const caseObjetsClairs = document.getElementById("objetsClairs");
-    const masque = document.getElementById("masque");
-    const resultat = document.getElementById("resultat");
-    let minuteur = null;
-
-    function rafraichirMasque() {
-      if (imageId === null) return;
-      masque.src = `/images/${imageId}/masque?seuil=${curseur.value}`
-                 + `&objets_clairs=${caseObjetsClairs.checked}`;
-    }
-
+    // ---------- Le curseur de seuil ----------
     curseur.addEventListener("input", () => {
       valeurSeuil.textContent = curseur.value;
       clearTimeout(minuteur);
@@ -89,6 +155,7 @@
 
     caseObjetsClairs.addEventListener("change", rafraichirMasque);
 
+    // ---------- Lancer une analyse ----------
     document.getElementById("analyser").addEventListener("click", async () => {
       if (imageId === null) {
         resultat.textContent = "Envoie d'abord une photo.";
@@ -115,6 +182,7 @@
       resultat.textContent =
         `${analyse.nb_objets} objets — aire totale ${analyse.aire_totale} px — `
         + `aire moyenne ${analyse.aire_moyenne.toFixed(1)} px`;
+      chargerHistorique();                       // ← ICI : ajoute la nouvelle analyse au tableau
     });
   </script>
 </body>
