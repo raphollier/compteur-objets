@@ -18,5 +18,17 @@ services:
       timeout: 3s
       retries: 10
 
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://compteur:motdepasse_dev@base:5432/compteur
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./donnees/images:/donnees/images
+    depends_on:
+      base:
+        condition: service_healthy
+
 volumes:
   donnees_base:
