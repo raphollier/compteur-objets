@@ -4,7 +4,7 @@
 CREATE TABLE images (
     id             INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nom_origine    TEXT        NOT NULL,
-    chemin_fichier TEXT        NOT NULL,
+    nom_fichier    TEXT        NOT NULL,
     largeur        INTEGER     NOT NULL,
     hauteur        INTEGER     NOT NULL,
     date_envoi     TIMESTAMPTZ NOT NULL DEFAULT now()

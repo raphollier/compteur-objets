@@ -51,7 +51,6 @@ def page_accueil() -> FileResponse:
     return FileResponse("static/index.html")
 
 
-
 @app.get("/sante")
 def sante():
     """Dit simplement que le service répond."""
@@ -70,13 +69,13 @@ def envoyer_image(fichier: UploadFile) -> ImageEnvoyee:
     except ValueError as erreur:
         raise HTTPException(status_code=415, detail=str(erreur))
 
-    chemin = DOSSIER_IMAGES / f"{uuid4().hex}.png"
-    chemin.write_bytes(tableau_en_png(tableau))
+    nom_fichier = f"{uuid4().hex}.png"
+    (DOSSIER_IMAGES / nom_fichier).write_bytes(tableau_en_png(tableau))
 
     hauteur, largeur = tableau.shape
     ligne = base.creer_image(
         nom_origine=fichier.filename or "sans_nom",
-        chemin_fichier=str(chemin),
+        nom_fichier=nom_fichier,
         largeur=largeur,
         hauteur=hauteur,
     )
@@ -90,7 +89,7 @@ def lancer_analyse(image_id: int, demande: DemandeAnalyse) -> Analyse:
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    tableau = charger_image(image["chemin_fichier"])
+    tableau = charger_image(DOSSIER_IMAGES / image["nom_fichier"])
     resultat = analyser(tableau, demande.seuil, demande.objets_clairs)
 
     ligne = base.creer_analyse(
@@ -135,7 +134,7 @@ def voir_masque(
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    tableau = charger_image(image["chemin_fichier"])
+    tableau = charger_image(DOSSIER_IMAGES / image["nom_fichier"])
     masque = calculer_masque(tableau, seuil, objets_clairs)
     return Response(content=masque_en_png(masque), media_type="image/png")
 
@@ -151,4 +150,4 @@ def voir_image(image_id: int) -> FileResponse:
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    return FileResponse(image["chemin_fichier"], media_type="image/png")
+    return FileResponse(DOSSIER_IMAGES / image["nom_fichier"], media_type="image/png")

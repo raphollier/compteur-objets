@@ -1,6 +1,7 @@
 """Préparation des images reçues : du fichier envoyé au tableau de gris."""
 
 import io
+from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -42,6 +43,6 @@ def masque_en_png(masque: np.ndarray) -> bytes:
     return tableau_en_png((masque * 255).astype(np.uint8))
 
 
-def charger_image(chemin: str) -> np.ndarray:
+def charger_image(chemin: Path) -> np.ndarray:
     """Relit une image préparée depuis le disque, en tableau de gris."""
     return np.array(Image.open(chemin))

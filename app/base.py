@@ -15,16 +15,16 @@ reserve = ConnectionPool(
 )
 
 
-def creer_image(nom_origine: str, chemin_fichier: str, largeur: int, hauteur: int) -> dict:
+def creer_image(nom_origine: str, nom_fichier: str, largeur: int, hauteur: int) -> dict:
     """Enregistre une image et renvoie la ligne créée."""
     with reserve.connection() as connexion:
         resultat = connexion.execute(
             """
-            INSERT INTO images (nom_origine, chemin_fichier, largeur, hauteur)
+            INSERT INTO images (nom_origine, nom_fichier, largeur, hauteur)
             VALUES (%s, %s, %s, %s)
-            RETURNING id, nom_origine, chemin_fichier, largeur, hauteur, date_envoi
+            RETURNING id, nom_origine, nom_fichier, largeur, hauteur, date_envoi
             """,
-            (nom_origine, chemin_fichier, largeur, hauteur),
+            (nom_origine, nom_fichier, largeur, hauteur),
         )
         return resultat.fetchone()
 
