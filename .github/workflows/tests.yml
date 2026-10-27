@@ -40,7 +40,7 @@ jobs:
 
       - name: Parcours utilisateur par HTTP
         run: |
-          curl --fail-with-body --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/sante
+          curl --fail-with-body http://127.0.0.1:8000/sante
           curl --fail-with-body -F "fichier=@tests/trois_carres.png" http://127.0.0.1:8000/images
           curl --fail-with-body -H "Content-Type: application/json" -d '{"seuil": 128}' -o analyse.json http://127.0.0.1:8000/images/1/analyses
           cat analyse.json
