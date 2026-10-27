@@ -25,7 +25,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     volumes:
-      - ./donnees/images:/donnees/images
+      - donnees_images:/donnees/images
     depends_on:
       base:
         condition: service_healthy
@@ -37,3 +37,4 @@ services:
 
 volumes:
   donnees_base:
+  donnees_images:
