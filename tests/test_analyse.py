@@ -26,7 +26,7 @@ def test_un_carre_de_10_sur_10_est_un_objet_de_100_pixels():
     resultat = analyser(image, seuil=128)
 
     assert resultat["nb_objets"] == 1
-    assert resultat["aire_totale"] == 101
+    assert resultat["aire_totale"] == 100
     assert resultat["aire_moyenne"] == 100
 
 
