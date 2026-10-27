@@ -28,12 +28,25 @@ jobs:
       - name: Lancer les tests
         run: pytest -v
 
-  image:
-    name: Image Docker
+  parcours:
+    name: Parcours complet (Docker)
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v5
 
-      - name: Construire l'image
-        run: docker build -t compteur-objets .
+      - name: Construire et démarrer la base et le service
+        run: docker compose up --build --wait
+
+      - name: Parcours utilisateur par HTTP
+        run: |
+          curl --fail-with-body --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/sante
+          curl --fail-with-body -F "fichier=@tests/trois_carres.png" http://127.0.0.1:8000/images
+          curl --fail-with-body -H "Content-Type: application/json" -d '{"seuil": 128}' -o analyse.json http://127.0.0.1:8000/images/1/analyses
+          cat analyse.json
+          grep -q '"nb_objets":3' analyse.json
+          curl --fail-with-body -o /dev/null http://127.0.0.1:8000/images/1/fichier
+
+      - name: Afficher les messages des conteneurs en cas d'échec
+        if: failure()
+        run: docker compose logs
