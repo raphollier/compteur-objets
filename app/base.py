@@ -1,5 +1,6 @@
 """Accès à la base de données : toutes les requêtes SQL du projet."""
 
+import atexit
 import os
 
 from psycopg.rows import dict_row
@@ -13,6 +14,9 @@ ADRESSE_BASE = os.environ.get(
 reserve = ConnectionPool(
     ADRESSE_BASE, min_size=1, max_size=5, open=True, kwargs={"row_factory": dict_row}
 )
+
+# À la fin du programme, fermer proprement les connexions de la réserve.
+atexit.register(reserve.close)
 
 
 def creer_image(nom_origine: str, nom_fichier: str, largeur: int, hauteur: int) -> dict:

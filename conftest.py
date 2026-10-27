@@ -1,6 +1,8 @@
 """Préparation commune à tous les tests : une base dédiée, vidée avant chaque test."""
 
+import atexit
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -30,7 +32,12 @@ def _preparer_base_de_test():
 
 
 os.environ["DATABASE_URL"] = ADRESSE_TEST
-os.environ["DOSSIER_IMAGES"] = tempfile.mkdtemp(prefix="images_test_")
+
+# Un dossier temporaire pour les photos des tests, supprimé à la fin.
+DOSSIER_IMAGES_TEST = tempfile.mkdtemp(prefix="images_test_")
+atexit.register(shutil.rmtree, DOSSIER_IMAGES_TEST, ignore_errors=True)
+os.environ["DOSSIER_IMAGES"] = DOSSIER_IMAGES_TEST
+
 _preparer_base_de_test()
 
 
