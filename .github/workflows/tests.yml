@@ -1,0 +1,39 @@
+# Intégration continue : à chaque envoi sur GitHub, on vérifie tout sur des machines neuves.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Démarrer la base de données
+        run: docker compose up --wait base
+
+      - name: Installer Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Installer les bibliothèques
+        run: pip install -r requirements-dev.txt
+
+      - name: Lancer les tests
+        run: pytest -v
+
+  image:
+    name: Image Docker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v5
+
+      - name: Construire l'image
+        run: docker build -t compteur-objets .
