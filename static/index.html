@@ -22,6 +22,7 @@
     th, td { border: 1px solid #ddd; padding: 0.3rem 0.6rem; text-align: right; }
     th { background: #f4f4f4; }
     #message, #resultat { font-weight: bold; }
+    #champSeuil { width: 4.5rem; }
   </style>
 </head>
 <body>
@@ -34,8 +35,9 @@
 
   <div id="reglages">
     <label>
-      Seuil : <span id="valeurSeuil">128</span>
+      Seuil :
       <input type="range" id="seuil" min="0" max="255" value="128">
+      <input type="number" id="champSeuil" min="0" max="255" step="1" value="128">
     </label>
     <label>
       <input type="checkbox" id="objetsClairs"> objets clairs sur fond sombre
@@ -73,7 +75,7 @@
     const message = document.getElementById("message");
     const apercu = document.getElementById("apercu");
     const curseur = document.getElementById("seuil");
-    const valeurSeuil = document.getElementById("valeurSeuil");
+    const champSeuil = document.getElementById("champSeuil");
     const caseObjetsClairs = document.getElementById("objetsClairs");
     const masque = document.getElementById("masque");
     const resultat = document.getElementById("resultat");
@@ -147,10 +149,27 @@
     });
 
     // ---------- Le curseur de seuil ----------
-    curseur.addEventListener("input", () => {
-      valeurSeuil.textContent = curseur.value;
+    function planifierMasque() {
       clearTimeout(minuteur);
       minuteur = setTimeout(rafraichirMasque, 150);
+    }
+
+    curseur.addEventListener("input", () => {
+      champSeuil.value = curseur.value;
+      planifierMasque();
+    });
+
+    champSeuil.addEventListener("input", () => {
+      const valeur = Number(champSeuil.value);
+      if (champSeuil.value === "" || !Number.isInteger(valeur) || valeur < 0 || valeur > 255) {
+        return;
+      }
+      curseur.value = valeur;
+      planifierMasque();
+    });
+
+    champSeuil.addEventListener("change", () => {
+      champSeuil.value = curseur.value;
     });
 
     caseObjetsClairs.addEventListener("change", rafraichirMasque);
