@@ -150,4 +150,8 @@ def voir_image(image_id: int) -> FileResponse:
     if image is None:
         raise HTTPException(status_code=404, detail=f"aucune image n° {image_id}")
 
-    return FileResponse(DOSSIER_IMAGES / image["nom_fichier"], media_type="image/png")
+    return FileResponse(
+        DOSSIER_IMAGES / image["nom_fichier"],
+        media_type="image/png",
+        headers={"Cache-Control": "no-cache"},
+    )

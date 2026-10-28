@@ -137,3 +137,11 @@ def test_masque_sans_seuil_est_refuse():
     reponse = client.get(f"/images/{image_id}/masque")
 
     assert reponse.status_code == 422
+
+def test_le_navigateur_doit_redemander_la_photo_a_chaque_affichage():
+    image_id = envoyer_image_de_test()
+
+    reponse = client.get(f"/images/{image_id}/fichier")
+
+    assert reponse.status_code == 200
+    assert reponse.headers["cache-control"] == "no-cache"
