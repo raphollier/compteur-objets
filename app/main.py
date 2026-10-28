@@ -48,7 +48,7 @@ class Analyse(BaseModel):
 @app.get("/", include_in_schema=False)
 def page_accueil() -> FileResponse:
     """Sert la page web du service."""
-    return FileResponse("static/index.html")
+    return FileResponse("static/index.html", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/sante")

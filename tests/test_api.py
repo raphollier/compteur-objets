@@ -145,3 +145,9 @@ def test_le_navigateur_doit_redemander_la_photo_a_chaque_affichage():
 
     assert reponse.status_code == 200
     assert reponse.headers["cache-control"] == "no-cache"
+
+def test_le_navigateur_doit_redemander_la_page_a_chaque_visite():
+    reponse = client.get("/")
+
+    assert reponse.status_code == 200
+    assert reponse.headers["cache-control"] == "no-cache"
